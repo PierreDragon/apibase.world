@@ -6,19 +6,33 @@ interface Props {
   text: string
 }
 
-const CHART_RE = /```chart\n([\s\S]*?)```/g
+// Matches ```chart ... ``` fences (with optional whitespace after "chart")
+const FENCE_RE = /```chart[ \t]*\r?\n([\s\S]*?)```/g
+// Fallback: a line that is a standalone JSON object with a "type" key (Claude sometimes skips the fence)
+const INLINE_RE = /^(\{"type"\s*:\s*"(?:bar|line|area|pie)"[\s\S]*?\})\s*$/m
 
 function splitCharts(text: string): Array<{ type: 'text' | 'chart'; content: string }> {
   const parts: Array<{ type: 'text' | 'chart'; content: string }> = []
   let last = 0
   let match: RegExpExecArray | null
-  CHART_RE.lastIndex = 0
-  while ((match = CHART_RE.exec(text)) !== null) {
+  FENCE_RE.lastIndex = 0
+  while ((match = FENCE_RE.exec(text)) !== null) {
     if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) })
     parts.push({ type: 'chart', content: match[1] })
     last = match.index + match[0].length
   }
-  if (last < text.length) parts.push({ type: 'text', content: text.slice(last) })
+  if (last < text.length) {
+    const remaining = text.slice(last)
+    const inline = INLINE_RE.exec(remaining)
+    if (inline) {
+      if (inline.index > 0) parts.push({ type: 'text', content: remaining.slice(0, inline.index) })
+      parts.push({ type: 'chart', content: inline[1] })
+      const after = inline.index + inline[0].length
+      if (after < remaining.length) parts.push({ type: 'text', content: remaining.slice(after) })
+    } else {
+      parts.push({ type: 'text', content: remaining })
+    }
+  }
   return parts
 }
 
