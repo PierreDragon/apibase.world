@@ -156,7 +156,7 @@ export default function NQL() {
                 {msg.text}
               </div>
             ) : (
-              <div className="max-w-2xl w-full">
+              <div className="w-full">
                 {msg.loading ? (
                   <div className="flex items-center gap-2 px-2 py-3">
                     {[0, 150, 300].map(d => (
