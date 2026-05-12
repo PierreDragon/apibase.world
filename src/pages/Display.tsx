@@ -38,7 +38,7 @@ export default function Display() {
       <div className="flex-1 flex flex-col items-center justify-center p-12">
         {payload ? (
           <div className="w-full max-w-5xl">
-            <p className="text-2xl font-light mb-8" style={{ color: '#334155' }}>
+            <p className="text-2xl font-light mb-8" style={{ color: '#94a3b8' }}>
               {payload.query}
             </p>
             <div style={{ fontSize: '1.5rem' }}>
