@@ -30,10 +30,10 @@ export default function Input() {
         setSent(true)
         setTimeout(() => setSent(false), 3000)
       } else {
-        setError(data.error ?? 'Erreur.')
+        setError(data.error ?? 'An error occurred.')
       }
     } catch {
-      setError('Impossible de joindre le serveur.')
+      setError('Unable to reach the server.')
     } finally {
       setBusy(false)
       inputRef.current?.focus()
@@ -51,7 +51,7 @@ export default function Input() {
             style={{ background: 'rgba(139,92,246,0.2)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.4)' }}>
             NQL
           </span>
-          <p className="text-xs mt-2" style={{ color: '#334155' }}>Mode mobile</p>
+          <p className="text-xs mt-2" style={{ color: '#334155' }}>Mobile mode</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -60,7 +60,7 @@ export default function Input() {
             rows={4}
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Posez votre question…"
+            placeholder="Ask your question…"
             autoFocus
             className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
             style={{ background: '#12121a', border: '1px solid #1e1e2e', color: '#e2e8f0' }}
@@ -75,13 +75,13 @@ export default function Input() {
               border: 'none',
               cursor: input.trim() && !busy ? 'pointer' : 'not-allowed',
             }}>
-            {busy ? 'Envoi…' : 'Envoyer →'}
+            {busy ? 'Sending…' : 'Send →'}
           </button>
         </form>
 
         {sent && (
           <p className="text-center text-sm" style={{ color: '#34d399' }}>
-            ✓ Affiché sur le plasma
+            ✓ Displayed on plasma
           </p>
         )}
         {error && (

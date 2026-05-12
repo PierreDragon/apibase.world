@@ -32,10 +32,10 @@ export default function Login() {
           }
         }
       } else {
-        setError(res.error ?? 'Authentification échouée.')
+        setError(res.error ?? 'Authentication failed.')
       }
     } catch {
-      setError('Impossible de joindre le serveur.')
+      setError('Unable to reach the server.')
     } finally {
       setLoading(false)
     }
@@ -73,8 +73,8 @@ export default function Login() {
           </div>
           <p className="text-sm" style={{ color: '#64748b' }}>
             {step === 'credentials'
-              ? 'Connectez-vous à votre installation APIBASE'
-              : 'Choisissez votre token et votre base'}
+              ? 'Sign in to your APIBASE installation'
+              : 'Choose your token and base'}
           </p>
         </div>
 
@@ -84,7 +84,7 @@ export default function Login() {
             className="rounded-2xl p-8 space-y-5"
             style={{ background: '#12121a', border: '1px solid #1e1e2e' }}>
 
-            <Field label="Hôte APIBASE">
+            <Field label="APIBASE Host">
               <input
                 type="text"
                 value={host}
@@ -101,7 +101,7 @@ export default function Login() {
               </p>
             </Field>
 
-            <Field label="Identifiant">
+            <Field label="Username">
               <input
                 type="text"
                 value={username}
@@ -116,7 +116,7 @@ export default function Login() {
               />
             </Field>
 
-            <Field label="Mot de passe">
+            <Field label="Password">
               <input
                 type="password"
                 value={password}
@@ -133,7 +133,7 @@ export default function Login() {
             {error && <ErrorBox>{error}</ErrorBox>}
 
             <SubmitButton loading={loading} disabled={!host || !username || !password}>
-              {loading ? 'Connexion…' : 'Continuer →'}
+              {loading ? 'Signing in…' : 'Continue →'}
             </SubmitButton>
           </form>
         )}
@@ -161,7 +161,7 @@ export default function Login() {
                       color: '#e2e8f0',
                     }}>
                     <span className="font-mono text-xs mr-2" style={{ color: '#64748b' }}>#{t.id_token}</span>
-                    {t.label || 'Token sans label'}
+                    {t.label || 'Unlabelled token'}
                     <span className="ml-2 text-xs" style={{ color: '#475569' }}>
                       ({t.bases.length} base{t.bases.length > 1 ? 's' : ''})
                     </span>
@@ -197,10 +197,10 @@ export default function Login() {
               <button type="button" onClick={() => setStep('credentials')}
                 className="px-4 py-3 rounded-lg text-sm"
                 style={{ background: '#1e1e2e', color: '#64748b', border: 'none', cursor: 'pointer' }}>
-                ← Retour
+                ← Back
               </button>
               <SubmitButton loading={false} disabled={!selectedToken || !selectedBase} className="flex-1">
-                Accéder à NQL →
+                Open NQL →
               </SubmitButton>
             </div>
           </form>

@@ -72,7 +72,7 @@ export default function NQL() {
     } catch {
       setMessages(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = { role: 'assistant', text: 'Impossible de joindre le serveur.', loading: false }
+        updated[updated.length - 1] = { role: 'assistant', text: 'Unable to reach the server.', loading: false }
         return updated
       })
     } finally {
@@ -89,9 +89,9 @@ export default function NQL() {
   }
 
   const suggestions = [
-    'Quels sont mes 5 meilleurs clients ce mois-ci?',
-    'Combien de commandes sont en attente?',
-    'Marque la commande #1042 comme expédiée.',
+    'Who are my top 5 customers this month?',
+    'How many orders are pending?',
+    'Mark order #1042 as shipped.',
   ]
 
   return (
@@ -122,7 +122,7 @@ export default function NQL() {
           {messages.length > 0 && (
             <button onClick={() => setMessages([])} className="text-xs px-3 py-1.5 rounded-lg"
               style={{ background: 'none', color: '#475569', border: '1px solid #1e1e2e', cursor: 'pointer' }}>
-              Effacer
+              Clear
             </button>
           )}
           <button onClick={openDisplay}
@@ -131,7 +131,7 @@ export default function NQL() {
             ⎋ Plasma
           </button>
           <button onClick={logout} className="text-xs" style={{ color: '#475569', background: 'none', border: 'none', cursor: 'pointer' }}>
-            Déconnexion
+            Sign out
           </button>
         </div>
       </header>
@@ -141,9 +141,9 @@ export default function NQL() {
         {messages.length === 0 && (
           <div className="text-center pt-16">
             <p className="text-4xl mb-4">✦</p>
-            <p className="font-semibold text-white text-lg mb-1">Posez votre question</p>
+            <p className="font-semibold text-white text-lg mb-1">Ask a question</p>
             <p className="text-sm mb-6" style={{ color: '#475569' }}>
-              NQL traduit votre demande en une opération APIBASE précise sur <span className="font-mono" style={{ color: '#64748b' }}>{base}</span>.
+              NQL translates your request into a precise APIBASE operation on <span className="font-mono" style={{ color: '#64748b' }}>{base}</span>.
             </p>
             <div className="space-y-2">
               {suggestions.map(s => (
@@ -197,7 +197,7 @@ export default function NQL() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Posez votre question en langage naturel…"
+            placeholder="Ask a question in natural language…"
             className="flex-1 bg-transparent outline-none resize-none text-sm leading-relaxed"
             style={{ color: '#e2e8f0', maxHeight: '120px' }}
           />
@@ -214,7 +214,7 @@ export default function NQL() {
           </button>
         </div>
         <p className="text-center text-xs mt-2" style={{ color: '#1e293b' }}>
-          Entrée pour envoyer · Maj+Entrée pour nouvelle ligne
+          Enter to send · Shift+Enter for new line
         </p>
       </div>
     </div>

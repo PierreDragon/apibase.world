@@ -49,7 +49,7 @@ export default function Display() {
           <div className="text-center">
             <p className="text-6xl mb-6" style={{ color: '#1e293b' }}>✦</p>
             <p className="text-xl font-light" style={{ color: '#334155' }}>
-              En attente d'une requête NQL…
+              Waiting for an NQL query…
             </p>
           </div>
         )}
@@ -60,7 +60,7 @@ export default function Display() {
         style={{ borderLeft: '1px solid #0f172a' }}>
         <QRCode value={inputUrl} size={140} />
         <p className="text-xs text-center" style={{ color: '#1e293b', maxWidth: '140px', wordBreak: 'break-all' }}>
-          Scanner pour saisir depuis le téléphone
+          Scan to enter from your phone
         </p>
       </div>
     </div>
