@@ -126,7 +126,7 @@ export default function NQL() {
       </header>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 max-w-3xl mx-auto w-full">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 w-full px-2">
         {messages.length === 0 && (
           <div className="text-center pt-16">
             <p className="text-4xl mb-4">✦</p>
@@ -177,7 +177,7 @@ export default function NQL() {
       </div>
 
       {/* Input */}
-      <div className="px-4 pb-6 max-w-3xl mx-auto w-full">
+      <div className="px-4 pb-6 w-full px-2">
         <div className="flex items-end gap-3 px-4 py-3 rounded-2xl"
           style={{ background: '#12121a', border: '1px solid #1e1e2e' }}>
           <textarea
