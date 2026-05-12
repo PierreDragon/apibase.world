@@ -1,15 +1,38 @@
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import ChartRenderer from './ChartRenderer'
 
 interface Props {
   text: string
 }
 
+const CHART_RE = /```chart\n([\s\S]*?)```/g
+
+function splitCharts(text: string): Array<{ type: 'text' | 'chart'; content: string }> {
+  const parts: Array<{ type: 'text' | 'chart'; content: string }> = []
+  let last = 0
+  let match: RegExpExecArray | null
+  CHART_RE.lastIndex = 0
+  while ((match = CHART_RE.exec(text)) !== null) {
+    if (match.index > last) parts.push({ type: 'text', content: text.slice(last, match.index) })
+    parts.push({ type: 'chart', content: match[1] })
+    last = match.index + match[0].length
+  }
+  if (last < text.length) parts.push({ type: 'text', content: text.slice(last) })
+  return parts
+}
+
 export default function ResultRenderer({ text }: Props) {
   if (!text) return null
+  const parts = splitCharts(text)
   return (
     <div style={{ color: '#cbd5e1', fontSize: '0.875rem', lineHeight: '1.7' }}>
+      {parts.map((part, i) =>
+        part.type === 'chart'
+          ? <ChartRenderer key={i} raw={part.content} />
+          : (
       <ReactMarkdown
+        key={i}
         remarkPlugins={[remarkGfm]}
         components={{
           p: ({ children }) => (
@@ -100,8 +123,10 @@ export default function ResultRenderer({ text }: Props) {
           ),
         }}
       >
-        {text}
+        {part.content}
       </ReactMarkdown>
+          )
+      )}
     </div>
   )
 }
