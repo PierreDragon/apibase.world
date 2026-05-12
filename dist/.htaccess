@@ -1,0 +1,17 @@
+Options -MultiViews
+RewriteEngine On
+RewriteBase /
+
+# Static file extensions — serve directly, no rewrite
+RewriteRule \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|map|json)$ - [L]
+
+# PHP api/ folder — pass through
+RewriteRule ^api/ - [L]
+
+# Existing files and directories — serve as-is
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# Everything else → React Router
+RewriteRule ^ /index.html [L]
