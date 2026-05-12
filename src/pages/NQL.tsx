@@ -119,6 +119,12 @@ export default function NQL() {
             <span style={{ color: '#1e293b' }}>·</span>
             <span>token #{idToken}</span>
           </div>
+          {messages.length > 0 && (
+            <button onClick={() => setMessages([])} className="text-xs px-3 py-1.5 rounded-lg"
+              style={{ background: 'none', color: '#475569', border: '1px solid #1e1e2e', cursor: 'pointer' }}>
+              Effacer
+            </button>
+          )}
           <button onClick={openDisplay}
             className="text-xs px-3 py-1.5 rounded-lg"
             style={{ background: '#1e1e2e', color: '#94a3b8', border: '1px solid #2d2d3e', cursor: 'pointer' }}>
@@ -198,8 +204,8 @@ export default function NQL() {
           <button onClick={sendQuery} disabled={!input.trim() || busy}
             className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all"
             style={{
-              background: input.trim() && !busy ? 'linear-gradient(135deg,#7c3aed,#6d28d9)' : '#1e1e2e',
-              color: input.trim() && !busy ? '#fff' : '#475569',
+              background: input.trim() && !busy ? 'linear-gradient(135deg,#7c3aed,#6d28d9)' : 'rgba(109,40,217,0.25)',
+              color: input.trim() && !busy ? '#fff' : '#7c3aed',
               border: 'none',
               cursor: input.trim() && !busy ? 'pointer' : 'not-allowed',
               fontSize: '1rem',
