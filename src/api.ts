@@ -10,6 +10,7 @@ export interface AuthResult {
   ok: boolean
   id_user?: number
   username?: string
+  lang?: string
   tokens?: TokenInfo[]
   error?: string
 }

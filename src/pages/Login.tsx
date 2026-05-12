@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { authenticate, type TokenInfo } from '../api'
+import { t } from '../i18n'
 
 type Step = 'credentials' | 'token'
 
@@ -23,6 +24,7 @@ export default function Login() {
     try {
       const res = await authenticate(host.trim(), username.trim(), password)
       if (res.ok && res.tokens) {
+        sessionStorage.setItem('nql_lang', res.lang ?? 'en')
         setTokens(res.tokens)
         setStep('token')
         if (res.tokens.length === 1) {
@@ -32,10 +34,10 @@ export default function Login() {
           }
         }
       } else {
-        setError(res.error ?? 'Authentication failed.')
+        setError(res.error ?? t('auth_failed'))
       }
     } catch {
-      setError('Unable to reach the server.')
+      setError(t('server_unreachable'))
     } finally {
       setLoading(false)
     }
@@ -72,9 +74,7 @@ export default function Login() {
             </span>
           </div>
           <p className="text-sm" style={{ color: '#64748b' }}>
-            {step === 'credentials'
-              ? 'Sign in to your APIBASE installation'
-              : 'Choose your token and base'}
+            {step === 'credentials' ? t('signin_subtitle') : t('token_subtitle')}
           </p>
         </div>
 
@@ -84,7 +84,7 @@ export default function Login() {
             className="rounded-2xl p-8 space-y-5"
             style={{ background: '#12121a', border: '1px solid #1e1e2e' }}>
 
-            <Field label="APIBASE Host">
+            <Field label={t('field_host')}>
               <input
                 type="text"
                 value={host}
@@ -101,7 +101,7 @@ export default function Login() {
               </p>
             </Field>
 
-            <Field label="Username">
+            <Field label={t('field_username')}>
               <input
                 type="text"
                 value={username}
@@ -116,7 +116,7 @@ export default function Login() {
               />
             </Field>
 
-            <Field label="Password">
+            <Field label={t('field_password')}>
               <input
                 type="password"
                 value={password}
@@ -133,7 +133,7 @@ export default function Login() {
             {error && <ErrorBox>{error}</ErrorBox>}
 
             <SubmitButton loading={loading} disabled={!host || !username || !password}>
-              {loading ? 'Signing in…' : 'Continue →'}
+              {loading ? t('signing_in') : t('continue')}
             </SubmitButton>
           </form>
         )}
@@ -146,24 +146,24 @@ export default function Login() {
 
             <Field label="Token">
               <div className="space-y-2">
-                {tokens.map(t => (
+                {tokens.map(tok => (
                   <button
-                    key={t.id_token}
+                    key={tok.id_token}
                     type="button"
                     onClick={() => {
-                      setSelectedToken(t)
-                      setSelectedBase(t.bases.length === 1 ? t.bases[0] : '')
+                      setSelectedToken(tok)
+                      setSelectedBase(tok.bases.length === 1 ? tok.bases[0] : '')
                     }}
                     className="w-full text-left px-4 py-3 rounded-lg text-sm transition-all"
                     style={{
-                      background: selectedToken?.id_token === t.id_token ? 'rgba(124,58,237,0.15)' : '#0a0a0f',
-                      border: `1px solid ${selectedToken?.id_token === t.id_token ? '#7c3aed' : '#1e1e2e'}`,
+                      background: selectedToken?.id_token === tok.id_token ? 'rgba(124,58,237,0.15)' : '#0a0a0f',
+                      border: `1px solid ${selectedToken?.id_token === tok.id_token ? '#7c3aed' : '#1e1e2e'}`,
                       color: '#e2e8f0',
                     }}>
-                    <span className="font-mono text-xs mr-2" style={{ color: '#64748b' }}>#{t.id_token}</span>
-                    {t.label || 'Unlabelled token'}
+                    <span className="font-mono text-xs mr-2" style={{ color: '#64748b' }}>#{tok.id_token}</span>
+                    {tok.label || t('unlabelled_token')}
                     <span className="ml-2 text-xs" style={{ color: '#475569' }}>
-                      ({t.bases.length} base{t.bases.length > 1 ? 's' : ''})
+                      ({tok.bases.length} base{tok.bases.length > 1 ? 's' : ''})
                     </span>
                   </button>
                 ))}
@@ -197,10 +197,10 @@ export default function Login() {
               <button type="button" onClick={() => setStep('credentials')}
                 className="px-4 py-3 rounded-lg text-sm"
                 style={{ background: '#1e1e2e', color: '#64748b', border: 'none', cursor: 'pointer' }}>
-                ← Back
+                {t('back')}
               </button>
               <SubmitButton loading={false} disabled={!selectedToken || !selectedBase} className="flex-1">
-                Open NQL →
+                {t('open_nql')}
               </SubmitButton>
             </div>
           </form>

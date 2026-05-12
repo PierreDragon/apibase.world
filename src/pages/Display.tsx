@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { pollDisplay } from '../api'
 import QRCode from '../components/QRCode'
 import ResultRenderer from '../components/ResultRenderer'
+import { t } from '../i18n'
 
 interface DisplayPayload {
   query: string
@@ -49,7 +50,7 @@ export default function Display() {
           <div className="text-center">
             <p className="text-6xl mb-6" style={{ color: '#1e293b' }}>✦</p>
             <p className="text-xl font-light" style={{ color: '#334155' }}>
-              Waiting for an NQL query…
+              {t('waiting')}
             </p>
           </div>
         )}
@@ -60,7 +61,7 @@ export default function Display() {
         style={{ borderLeft: '1px solid #0f172a' }}>
         <QRCode value={inputUrl} size={140} />
         <p className="text-xs text-center" style={{ color: '#1e293b', maxWidth: '140px', wordBreak: 'break-all' }}>
-          Scan to enter from your phone
+          {t('scan_hint')}
         </p>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { nqlQuery } from '../api'
 import ResultRenderer from '../components/ResultRenderer'
+import { t } from '../i18n'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -72,7 +73,7 @@ export default function NQL() {
     } catch {
       setMessages(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = { role: 'assistant', text: 'Unable to reach the server.', loading: false }
+        updated[updated.length - 1] = { role: 'assistant', text: t('server_unreachable'), loading: false }
         return updated
       })
     } finally {
@@ -88,11 +89,7 @@ export default function NQL() {
     }
   }
 
-  const suggestions = [
-    'Who are my top 5 customers this month?',
-    'How many orders are pending?',
-    'Mark order #1042 as shipped.',
-  ]
+  const suggestions = [t('suggestion_1'), t('suggestion_2'), t('suggestion_3')]
 
   return (
     <div className="flex flex-col h-screen" style={{ background: '#0a0a0f' }}>
@@ -122,7 +119,7 @@ export default function NQL() {
           {messages.length > 0 && (
             <button onClick={() => setMessages([])} className="text-xs px-3 py-1.5 rounded-lg"
               style={{ background: 'none', color: '#475569', border: '1px solid #1e1e2e', cursor: 'pointer' }}>
-              Clear
+              {t('clear')}
             </button>
           )}
           <button onClick={openDisplay}
@@ -131,7 +128,7 @@ export default function NQL() {
             ⎋ Plasma
           </button>
           <button onClick={logout} className="text-xs" style={{ color: '#475569', background: 'none', border: 'none', cursor: 'pointer' }}>
-            Sign out
+            {t('sign_out')}
           </button>
         </div>
       </header>
@@ -141,9 +138,9 @@ export default function NQL() {
         {messages.length === 0 && (
           <div className="text-center pt-16">
             <p className="text-4xl mb-4">✦</p>
-            <p className="font-semibold text-white text-lg mb-1">Ask a question</p>
+            <p className="font-semibold text-white text-lg mb-1">{t('ask_title')}</p>
             <p className="text-sm mb-6" style={{ color: '#475569' }}>
-              NQL translates your request into a precise APIBASE operation on <span className="font-mono" style={{ color: '#64748b' }}>{base}</span>.
+              {t('ask_subtitle')} <span className="font-mono" style={{ color: '#64748b' }}>{base}</span>.
             </p>
             <div className="space-y-2">
               {suggestions.map(s => (
@@ -197,7 +194,7 @@ export default function NQL() {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}
-            placeholder="Ask a question in natural language…"
+            placeholder={t('ask_placeholder')}
             className="flex-1 bg-transparent outline-none resize-none text-sm leading-relaxed"
             style={{ color: '#e2e8f0', maxHeight: '120px' }}
           />
@@ -214,7 +211,7 @@ export default function NQL() {
           </button>
         </div>
         <p className="text-center text-xs mt-2" style={{ color: '#1e293b' }}>
-          Enter to send · Shift+Enter for new line
+          {t('enter_hint')}
         </p>
       </div>
     </div>

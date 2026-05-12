@@ -1,5 +1,6 @@
 import { useState, type FormEvent, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { t } from '../i18n'
 
 export default function Input() {
   const [params] = useSearchParams()
@@ -30,10 +31,10 @@ export default function Input() {
         setSent(true)
         setTimeout(() => setSent(false), 3000)
       } else {
-        setError(data.error ?? 'An error occurred.')
+        setError(data.error ?? t('error_generic'))
       }
     } catch {
-      setError('Unable to reach the server.')
+      setError(t('server_unreachable'))
     } finally {
       setBusy(false)
       inputRef.current?.focus()
@@ -51,7 +52,7 @@ export default function Input() {
             style={{ background: 'rgba(139,92,246,0.2)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.4)' }}>
             NQL
           </span>
-          <p className="text-xs mt-2" style={{ color: '#334155' }}>Mobile mode</p>
+          <p className="text-xs mt-2" style={{ color: '#334155' }}>{t('mobile_mode')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -60,7 +61,7 @@ export default function Input() {
             rows={4}
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Ask your question…"
+            placeholder={t('mobile_placeholder')}
             autoFocus
             className="w-full px-4 py-3 rounded-xl text-sm outline-none resize-none"
             style={{ background: '#12121a', border: '1px solid #1e1e2e', color: '#e2e8f0' }}
@@ -75,13 +76,13 @@ export default function Input() {
               border: 'none',
               cursor: input.trim() && !busy ? 'pointer' : 'not-allowed',
             }}>
-            {busy ? 'Sending…' : 'Send →'}
+            {busy ? t('sending') : t('send')}
           </button>
         </form>
 
         {sent && (
           <p className="text-center text-sm" style={{ color: '#34d399' }}>
-            ✓ Displayed on plasma
+            {t('displayed_plasma')}
           </p>
         )}
         {error && (
