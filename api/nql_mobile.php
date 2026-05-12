@@ -13,7 +13,7 @@ if (!$sid || !$prompt) {
     exit;
 }
 
-$file = sys_get_temp_dir() . '/nql_sess_' . $sid . '.json';
+$file = __DIR__ . '/sessions/nql_sess_' . $sid . '.json';
 if (!file_exists($file)) {
     echo json_encode(['ok' => false, 'error' => 'Session expirée. Rescannez le QR code.']);
     exit;
@@ -61,7 +61,7 @@ $payload = [
     'answer' => $result['answer'] ?? '',
     'ts'     => time(),
 ];
-$dispFile = sys_get_temp_dir() . '/nql_display_' . $sid . '.json';
+$dispFile = __DIR__ . '/sessions/nql_display_' . $sid . '.json';
 file_put_contents($dispFile, json_encode($payload));
 
 echo $resp;

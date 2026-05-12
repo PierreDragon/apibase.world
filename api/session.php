@@ -12,7 +12,9 @@ if (!$sid) {
     exit;
 }
 
-$file = sys_get_temp_dir() . '/nql_sess_' . $sid . '.json';
+$dir  = __DIR__ . '/sessions';
+if (!is_dir($dir)) mkdir($dir, 0750, true);
+$file = $dir . '/nql_sess_' . $sid . '.json';
 file_put_contents($file, json_encode([
     'host'     => $body['host']     ?? '',
     'username' => $body['username'] ?? '',
