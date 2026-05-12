@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { pollDisplay } from '../api'
 import QRCode from '../components/QRCode'
+import ResultRenderer from '../components/ResultRenderer'
 
 interface DisplayPayload {
   query: string
@@ -40,8 +41,8 @@ export default function Display() {
             <p className="text-2xl font-light mb-8" style={{ color: '#334155' }}>
               {payload.query}
             </p>
-            <div className="whitespace-pre-wrap leading-relaxed" style={{ color: '#f1f5f9', fontSize: '2rem', fontWeight: 300 }}>
-              {payload.answer}
+            <div style={{ fontSize: '1.5rem' }}>
+              <ResultRenderer text={payload.answer} />
             </div>
           </div>
         ) : (
