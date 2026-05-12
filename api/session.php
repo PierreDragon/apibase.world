@@ -12,8 +12,7 @@ if (!$sid) {
     exit;
 }
 
-// private_html est hors du web root — toujours accessible en écriture
-$dir = dirname(dirname(__DIR__)) . '/private_html';
+$dir = __DIR__ . '/sessions';
 if (!is_dir($dir)) mkdir($dir, 0750, true);
 
 $file   = $dir . '/nql_sess_' . $sid . '.json';
