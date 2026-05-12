@@ -1,6 +1,5 @@
 import { useState, type FormEvent, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { nqlQuery, pushToDisplay } from '../api'
 
 export default function Input() {
   const [params] = useSearchParams()
@@ -8,16 +7,8 @@ export default function Input() {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
+  const [error, setError] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
-
-  // Credentials come from sessionStorage (same browser session) or are absent on mobile scan
-  // On mobile scan: the sid encodes host/user/idToken/base — we store them in push.php context
-  // For now Input page just relays: sid is used to push to display
-  const host    = sessionStorage.getItem('nql_host') ?? ''
-  const user    = sessionStorage.getItem('nql_user') ?? ''
-  const pass    = sessionStorage.getItem('nql_pass') ?? ''
-  const idToken = parseInt(sessionStorage.getItem('nql_id_token') ?? '0', 10)
-  const base    = sessionStorage.getItem('nql_base') ?? ''
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -25,19 +16,24 @@ export default function Input() {
     if (!q || busy) return
     setBusy(true)
     setSent(false)
+    setError('')
 
     try {
-      if (host && user && pass && idToken && base) {
-        const res = await nqlQuery(host, user, pass, idToken, base, q)
-        if (res.ok) {
-          await pushToDisplay(sid, { query: q, answer: res.answer ?? '', ts: Date.now() })
-          setInput('')
-          setSent(true)
-          setTimeout(() => setSent(false), 3000)
-        }
+      const res = await fetch('/api/nql_mobile.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sid, prompt: q }),
+      })
+      const data = await res.json()
+      if (data.ok) {
+        setInput('')
+        setSent(true)
+        setTimeout(() => setSent(false), 3000)
+      } else {
+        setError(data.error ?? 'Erreur.')
       }
     } catch {
-      // silent on mobile
+      setError('Impossible de joindre le serveur.')
     } finally {
       setBusy(false)
       inputRef.current?.focus()
@@ -55,7 +51,7 @@ export default function Input() {
             style={{ background: 'rgba(139,92,246,0.2)', color: '#a78bfa', border: '1px solid rgba(139,92,246,0.4)' }}>
             NQL
           </span>
-          <p className="text-xs mt-2" style={{ color: '#334155' }}>Mode mobile · {base || 'sans base'}</p>
+          <p className="text-xs mt-2" style={{ color: '#334155' }}>Mode mobile</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
@@ -86,6 +82,11 @@ export default function Input() {
         {sent && (
           <p className="text-center text-sm" style={{ color: '#34d399' }}>
             ✓ Affiché sur le plasma
+          </p>
+        )}
+        {error && (
+          <p className="text-center text-sm" style={{ color: '#f87171' }}>
+            {error}
           </p>
         )}
       </div>

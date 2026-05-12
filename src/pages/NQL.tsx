@@ -36,8 +36,13 @@ export default function NQL() {
     navigate('/login')
   }
 
-  function openDisplay() {
+  async function openDisplay() {
     const sid = `${user}_${idToken}_${base}`
+    await fetch('/api/session.php', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sid, host, username: user, password: pass, id_token: idToken, base }),
+    })
     window.open(`/display?sid=${encodeURIComponent(sid)}`, '_blank')
   }
 
