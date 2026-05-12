@@ -1,0 +1,13 @@
+Options -MultiViews
+RewriteEngine On
+
+# Serve api/ folder via PHP — no rewrite
+RewriteRule ^api/ - [L]
+
+# Serve existing static files as-is
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# All other requests → index.html (React Router)
+RewriteRule ^ index.html [L]
