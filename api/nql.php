@@ -1,4 +1,6 @@
 <?php
+error_reporting(0);
+ini_set('display_errors', '0');
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Headers: Content-Type');
@@ -32,13 +34,23 @@ curl_setopt_array($ch, [
         'base'     => $base,
         'prompt'   => $prompt,
     ]),
-    CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+    CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+    CURLOPT_SSL_VERIFYPEER => false,
+    CURLOPT_FOLLOWLOCATION => false,
 ]);
 $resp = curl_exec($ch);
+$err  = curl_error($ch);
 $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
 
 if ($resp === false || $http === 0) {
-    echo json_encode(['ok' => false, 'error' => 'Hôte inaccessible : ' . $host]);
+    echo json_encode(['ok' => false, 'error' => 'Hôte inaccessible : ' . $host . ($err ? ' (' . $err . ')' : '')]);
+    exit;
+}
+
+$decoded = json_decode($resp, true);
+if (!is_array($decoded)) {
+    echo json_encode(['ok' => false, 'error' => 'Réponse invalide du node (HTTP ' . $http . ')']);
     exit;
 }
 
