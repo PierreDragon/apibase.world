@@ -106,7 +106,7 @@ export default function NQL() {
         </div>
         <div className="flex items-center gap-4">
           {/* Context badge */}
-          <div className="hidden sm:flex items-center gap-2 text-xs" style={{ color: '#475569' }}>
+          <div className="flex items-center gap-2 text-xs" style={{ color: '#475569' }}>
             <span className="font-mono" style={{ color: '#64748b' }}>{host}</span>
             <span style={{ color: '#1e293b' }}>·</span>
             <span className="font-mono px-2 py-0.5 rounded"
