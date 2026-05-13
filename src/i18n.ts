@@ -1,7 +1,7 @@
 const translations = {
   en: {
     // Login
-    signin_subtitle:    'Sign in to your APIBASE installation',
+    signin_subtitle:    'Sign in to your APIBASE node',
     token_subtitle:     'Choose your token and base',
     auth_failed:        'Authentication failed.',
     server_unreachable: 'Unable to reach the server.',
@@ -36,7 +36,7 @@ const translations = {
   },
   fr: {
     // Login
-    signin_subtitle:    'Connectez-vous à votre installation APIBASE',
+    signin_subtitle:    'Connectez-vous à votre node APIBASE',
     token_subtitle:     'Choisissez votre token et votre base',
     auth_failed:        'Authentification échouée.',
     server_unreachable: 'Impossible de joindre le serveur.',
