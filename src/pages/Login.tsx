@@ -158,13 +158,20 @@ export default function Login() {
                     style={{
                       background: selectedToken?.id_token === tok.id_token ? 'rgba(124,58,237,0.15)' : '#0a0a0f',
                       border: `1px solid ${selectedToken?.id_token === tok.id_token ? '#7c3aed' : '#1e1e2e'}`,
-                      color: '#e2e8f0',
+                      color: tok.rqt === 0 ? '#475569' : '#e2e8f0',
+                      opacity: tok.rqt === 0 ? 0.6 : 1,
                     }}>
                     <span className="font-mono text-xs mr-2" style={{ color: '#64748b' }}>#{tok.id_token}</span>
                     {tok.label || t('unlabelled_token')}
                     <span className="ml-2 text-xs" style={{ color: '#475569' }}>
                       ({tok.bases.length} base{tok.bases.length > 1 ? 's' : ''})
                     </span>
+                    {tok.rqt === 0 && (
+                      <span className="ml-2 text-xs px-1.5 py-0.5 rounded"
+                        style={{ background: 'rgba(239,68,68,0.15)', color: '#f87171' }}>
+                        épuisé
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

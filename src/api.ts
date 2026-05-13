@@ -3,6 +3,7 @@ const RELAY = '/api'
 export interface TokenInfo {
   id_token: number
   label: string
+  rqt: number
   bases: string[]
 }
 

@@ -114,6 +114,8 @@ export default function NQL() {
               {base}
             </span>
             <span style={{ color: '#1e293b' }}>·</span>
+            <span className="font-mono" style={{ color: '#94a3b8' }}>{user}</span>
+            <span style={{ color: '#1e293b' }}>·</span>
             <span>token #{idToken}</span>
           </div>
           {messages.length > 0 && (
