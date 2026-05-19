@@ -30,6 +30,10 @@ const translations = {
     send:               'Send →',
     error_generic:      'An error occurred.',
     displayed_plasma:   '✓ Displayed on plasma',
+    // Saved queries
+    saved:                 'Saved',
+    save_query:            'Save query',
+    save_name_placeholder: 'Query name…',
     // Display
     waiting:            'Waiting for an NQL query…',
     scan_hint:          'Scan to enter from your phone',
@@ -65,6 +69,10 @@ const translations = {
     send:               'Envoyer →',
     error_generic:      'Une erreur s\'est produite.',
     displayed_plasma:   '✓ Affiché sur le plasma',
+    // Saved queries
+    saved:                 'Sauvegardées',
+    save_query:            'Sauvegarder la requête',
+    save_name_placeholder: 'Nom de la requête…',
     // Display
     waiting:            'En attente d\'une requête NQL…',
     scan_hint:          'Scanner pour saisir depuis le téléphone',

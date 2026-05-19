@@ -10,13 +10,25 @@ interface Message {
   loading?: boolean
 }
 
+interface SavedQuery {
+  id: string
+  name: string
+  query: string
+  createdAt: string
+}
+
 export default function NQL() {
   const navigate = useNavigate()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [savedQueries, setSavedQueries] = useState<SavedQuery[]>([])
+  const [showSaved, setShowSaved] = useState(false)
+  const [showSaveInput, setShowSaveInput] = useState(false)
+  const [savingName, setSavingName] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const saveNameRef = useRef<HTMLInputElement>(null)
 
   const host = sessionStorage.getItem('nql_host') ?? ''
   const user = sessionStorage.getItem('nql_user') ?? ''
@@ -25,6 +37,7 @@ export default function NQL() {
   const base = sessionStorage.getItem('nql_base') ?? ''
 
   const contextKey = `apibase_nql_context:${host}:${base}:${idToken}:${user}`
+  const savedKey   = `apibase_nql_saved:${host}:${base}:${user}`
 
   useEffect(() => {
     if (!host || !user || !pass || !idToken || !base) {
@@ -36,20 +49,58 @@ export default function NQL() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(savedKey)
+      if (raw) setSavedQueries(JSON.parse(raw))
+    } catch {
+      setSavedQueries([])
+    }
+  }, [savedKey])
+
+  useEffect(() => {
+    if (showSaveInput) {
+      saveNameRef.current?.focus()
+    }
+  }, [showSaveInput])
+
+  function persistSaved(list: SavedQuery[]) {
+    localStorage.setItem(savedKey, JSON.stringify(list))
+    setSavedQueries(list)
+  }
+
+  function confirmSave() {
+    const name = savingName.trim()
+    const query = input.trim()
+    if (!name || !query) return
+    const entry: SavedQuery = {
+      id: Date.now().toString(),
+      name,
+      query,
+      createdAt: new Date().toISOString(),
+    }
+    persistSaved([entry, ...savedQueries])
+    setSavingName('')
+    setShowSaveInput(false)
+    inputRef.current?.focus()
+  }
+
+  function deleteSaved(id: string) {
+    persistSaved(savedQueries.filter(q => q.id !== id))
+  }
+
+  function restoreQuery(q: SavedQuery) {
+    setInput(q.query)
+    setShowSaved(false)
+    inputRef.current?.focus()
+  }
+
   function readContext(): NQLContext {
     try {
       const raw = localStorage.getItem(contextKey)
-
-      if (!raw) {
-        return null
-      }
-
+      if (!raw) return null
       const parsed = JSON.parse(raw)
-
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-        return null
-      }
-
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
       return parsed as NQLContext
     } catch {
       return null
@@ -61,7 +112,6 @@ export default function NQL() {
       localStorage.removeItem(contextKey)
       return
     }
-
     localStorage.setItem(contextKey, JSON.stringify(context))
   }
 
@@ -79,62 +129,41 @@ export default function NQL() {
 
   async function openDisplay() {
     const sid = `${user}_${idToken}_${base}`
-
     await fetch('/api/session.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sid, host, username: user, password: pass, id_token: idToken, base }),
     })
-
     window.open(`/display?sid=${encodeURIComponent(sid)}`, '_blank')
   }
 
   async function sendQuery() {
     const q = input.trim()
-
-    if (!q || busy) {
-      return
-    }
-
+    if (!q || busy) return
     const context = readContext()
-
     setInput('')
     setBusy(true)
-
     setMessages(prev => [
       ...prev,
       { role: 'user', text: q },
       { role: 'assistant', text: '', loading: true },
     ])
-
     try {
       const res = await nqlQuery(host, user, pass, idToken, base, q, context)
-
-      if ('context' in res) {
-        saveContext(res.context ?? null)
-      }
-
+      if ('context' in res) saveContext(res.context ?? null)
       setMessages(prev => {
         const updated = [...prev]
-
         updated[updated.length - 1] = {
           role: 'assistant',
           text: res.ok ? (res.answer ?? '') : (res.error ?? 'Erreur inattendue.'),
           loading: false,
         }
-
         return updated
       })
     } catch {
       setMessages(prev => {
         const updated = [...prev]
-
-        updated[updated.length - 1] = {
-          role: 'assistant',
-          text: t('server_unreachable'),
-          loading: false,
-        }
-
+        updated[updated.length - 1] = { role: 'assistant', text: t('server_unreachable'), loading: false }
         return updated
       })
     } finally {
@@ -148,6 +177,11 @@ export default function NQL() {
       e.preventDefault()
       sendQuery()
     }
+  }
+
+  function handleSaveKey(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') confirmSave()
+    if (e.key === 'Escape') { setShowSaveInput(false); setSavingName('') }
   }
 
   const suggestions = [t('suggestion_1'), t('suggestion_2'), t('suggestion_3')]
@@ -177,10 +211,7 @@ export default function NQL() {
           <div className="flex items-center gap-2 text-xs" style={{ color: '#475569' }}>
             <span className="font-mono" style={{ color: '#64748b' }}>{host}</span>
             <span style={{ color: '#1e293b' }}>·</span>
-            <span
-              className="font-mono px-2 py-0.5 rounded"
-              style={{ background: '#1e1e2e', color: '#a78bfa' }}
-            >
+            <span className="font-mono px-2 py-0.5 rounded" style={{ background: '#1e1e2e', color: '#a78bfa' }}>
               {base}
             </span>
             <span style={{ color: '#1e293b' }}>·</span>
@@ -193,12 +224,7 @@ export default function NQL() {
             <button
               onClick={clearChat}
               className="text-xs px-3 py-1.5 rounded-lg"
-              style={{
-                background: 'none',
-                color: '#475569',
-                border: '1px solid #1e1e2e',
-                cursor: 'pointer',
-              }}
+              style={{ background: 'none', color: '#475569', border: '1px solid #1e1e2e', cursor: 'pointer' }}
             >
               {t('clear')}
             </button>
@@ -207,12 +233,7 @@ export default function NQL() {
           <button
             onClick={openDisplay}
             className="text-xs px-3 py-1.5 rounded-lg"
-            style={{
-              background: '#1e1e2e',
-              color: '#94a3b8',
-              border: '1px solid #2d2d3e',
-              cursor: 'pointer',
-            }}
+            style={{ background: '#1e1e2e', color: '#94a3b8', border: '1px solid #2d2d3e', cursor: 'pointer' }}
           >
             ⎋ Plasma
           </button>
@@ -220,12 +241,7 @@ export default function NQL() {
           <button
             onClick={logout}
             className="text-xs"
-            style={{
-              color: '#475569',
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-            }}
+            style={{ color: '#475569', background: 'none', border: 'none', cursor: 'pointer' }}
           >
             {t('sign_out')}
           </button>
@@ -240,27 +256,15 @@ export default function NQL() {
             <p className="text-sm mb-6" style={{ color: '#475569' }}>
               {t('ask_subtitle')} <span className="font-mono" style={{ color: '#64748b' }}>{base}</span>.
             </p>
-
             <div className="space-y-2">
               {suggestions.map(s => (
                 <button
                   key={s}
                   onClick={() => setInput(s)}
                   className="block w-full text-left text-sm px-4 py-3 rounded-xl transition-all"
-                  style={{
-                    background: '#12121a',
-                    color: '#64748b',
-                    border: '1px solid #1e1e2e',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = '#7c3aed'
-                    e.currentTarget.style.color = '#a78bfa'
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = '#1e1e2e'
-                    e.currentTarget.style.color = '#64748b'
-                  }}
+                  style={{ background: '#12121a', color: '#64748b', border: '1px solid #1e1e2e', cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.borderColor = '#7c3aed'; e.currentTarget.style.color = '#a78bfa' }}
+                  onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e1e2e'; e.currentTarget.style.color = '#64748b' }}
                 >
                   {s}
                 </button>
@@ -274,10 +278,7 @@ export default function NQL() {
             {msg.role === 'user' ? (
               <div
                 className="max-w-xl px-4 py-3 rounded-2xl text-sm"
-                style={{
-                  background: 'linear-gradient(135deg,#7c3aed,#6d28d9)',
-                  color: '#fff',
-                }}
+                style={{ background: 'linear-gradient(135deg,#7c3aed,#6d28d9)', color: '#fff' }}
               >
                 {msg.text}
               </div>
@@ -286,18 +287,12 @@ export default function NQL() {
                 {msg.loading ? (
                   <div className="flex items-center gap-2 px-2 py-3">
                     {[0, 150, 300].map(d => (
-                      <span
-                        key={d}
-                        className="w-1.5 h-1.5 rounded-full animate-bounce"
-                        style={{ background: '#7c3aed', animationDelay: `${d}ms` }}
-                      />
+                      <span key={d} className="w-1.5 h-1.5 rounded-full animate-bounce"
+                        style={{ background: '#7c3aed', animationDelay: `${d}ms` }} />
                     ))}
                   </div>
                 ) : (
-                  <div
-                    className="px-4 py-3 rounded-2xl"
-                    style={{ background: '#12121a', border: '1px solid #1e1e2e' }}
-                  >
+                  <div className="px-4 py-3 rounded-2xl" style={{ background: '#12121a', border: '1px solid #1e1e2e' }}>
                     <ResultRenderer text={msg.text} />
                   </div>
                 )}
@@ -310,6 +305,95 @@ export default function NQL() {
       </div>
 
       <div className="pb-6 w-full px-2">
+
+        {/* Saved queries panel */}
+        {showSaved && savedQueries.length > 0 && (
+          <div
+            className="mb-2 rounded-xl overflow-hidden"
+            style={{ background: '#0d0d14', border: '1px solid #1e1e2e' }}
+          >
+            {savedQueries.map(q => (
+              <div
+                key={q.id}
+                className="flex items-center gap-2 px-3 py-2"
+                style={{ borderBottom: '1px solid #1a1a2e' }}
+              >
+                <button
+                  onClick={() => restoreQuery(q)}
+                  className="flex-1 text-left text-xs truncate"
+                  style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}
+                  title={q.query}
+                >
+                  <span style={{ color: '#a78bfa', marginRight: '8px' }}>⊞</span>
+                  {q.name}
+                </button>
+                <button
+                  onClick={() => deleteSaved(q.id)}
+                  className="text-xs flex-shrink-0"
+                  style={{ color: '#334155', background: 'none', border: 'none', cursor: 'pointer' }}
+                  onMouseEnter={e => { e.currentTarget.style.color = '#ef4444' }}
+                  onMouseLeave={e => { e.currentTarget.style.color = '#334155' }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Save name input */}
+        {showSaveInput && (
+          <div
+            className="mb-2 flex items-center gap-2 px-4 py-2 rounded-xl"
+            style={{ background: '#0d0d14', border: '1px solid #7c3aed' }}
+          >
+            <span style={{ color: '#a78bfa', fontSize: '0.75rem' }}>⊞</span>
+            <input
+              ref={saveNameRef}
+              value={savingName}
+              onChange={e => setSavingName(e.target.value)}
+              onKeyDown={handleSaveKey}
+              placeholder={t('save_name_placeholder')}
+              className="flex-1 bg-transparent outline-none text-xs"
+              style={{ color: '#e2e8f0' }}
+            />
+            <button
+              onClick={confirmSave}
+              disabled={!savingName.trim()}
+              className="text-xs px-2 py-1 rounded"
+              style={{
+                background: savingName.trim() ? '#7c3aed' : 'transparent',
+                color: savingName.trim() ? '#fff' : '#334155',
+                border: 'none',
+                cursor: savingName.trim() ? 'pointer' : 'default',
+              }}
+            >
+              ✓
+            </button>
+            <button
+              onClick={() => { setShowSaveInput(false); setSavingName('') }}
+              className="text-xs"
+              style={{ color: '#334155', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              ×
+            </button>
+          </div>
+        )}
+
+        {/* Toolbar: saved toggle */}
+        {savedQueries.length > 0 && (
+          <div className="flex items-center mb-1 px-1">
+            <button
+              onClick={() => setShowSaved(v => !v)}
+              className="text-xs"
+              style={{ color: showSaved ? '#a78bfa' : '#334155', background: 'none', border: 'none', cursor: 'pointer' }}
+            >
+              {showSaved ? '▲' : '▼'} {t('saved')} ({savedQueries.length})
+            </button>
+          </div>
+        )}
+
+        {/* Input box */}
         <div
           className="flex items-end gap-3 px-4 py-3 rounded-2xl"
           style={{ background: '#12121a', border: '1px solid #1e1e2e' }}
@@ -325,14 +409,25 @@ export default function NQL() {
             style={{ color: '#e2e8f0', maxHeight: '120px' }}
           />
 
+          {input.trim() && !busy && !showSaveInput && (
+            <button
+              onClick={() => setShowSaveInput(true)}
+              className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"
+              title={t('save_query')}
+              style={{ background: 'none', border: '1px solid #1e1e2e', color: '#475569', cursor: 'pointer', fontSize: '1rem' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = '#7c3aed'; e.currentTarget.style.color = '#a78bfa' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = '#1e1e2e'; e.currentTarget.style.color = '#475569' }}
+            >
+              ⊞
+            </button>
+          )}
+
           <button
             onClick={sendQuery}
             disabled={!input.trim() || busy}
             className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all"
             style={{
-              background: input.trim() && !busy
-                ? 'linear-gradient(135deg,#7c3aed,#6d28d9)'
-                : 'rgba(109,40,217,0.25)',
+              background: input.trim() && !busy ? 'linear-gradient(135deg,#7c3aed,#6d28d9)' : 'rgba(109,40,217,0.25)',
               color: input.trim() && !busy ? '#fff' : '#7c3aed',
               border: 'none',
               cursor: input.trim() && !busy ? 'pointer' : 'not-allowed',
