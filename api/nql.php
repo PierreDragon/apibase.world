@@ -125,6 +125,17 @@ if ($confirm !== null) {
     $payload['confirm'] = $confirm;
 }
 
+/*
+    NQL mode per call: "loboc" or "tools". Forwarded only when the UI asks;
+    without it, the installation setting (configs.nqlmode) applies.
+    An unknown value is left to api_run, which answers 400 INVALID_MODE.
+*/
+$mode = $body['mode'] ?? null;
+
+if (is_string($mode) && trim($mode) !== '') {
+    $payload['mode'] = trim($mode);
+}
+
 $ch = curl_init($url);
 
 curl_setopt_array($ch, [

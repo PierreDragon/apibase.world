@@ -50,8 +50,13 @@ export interface NQLConfirm {
   token: string
 }
 
+// Mode sent per call. Omitted: the installation setting (configs.nqlmode) applies.
+export type NQLMode = 'loboc' | 'tools'
+
 export interface NQLResult {
   ok: boolean
+  // Mode actually used for this answer; the display is based on it.
+  mode?: NQLMode
   answer?: string
   // tools mode
   tools?: NQLToolCall[]
@@ -89,9 +94,9 @@ export async function nqlQuery(
   idToken: number,
   base: string,
   prompt: string,
-  context: NQLContext = null,
-  confirm: NQLConfirm | null = null,
+  options: { context?: NQLContext; confirm?: NQLConfirm | null; mode?: NQLMode | null } = {},
 ): Promise<NQLResult> {
+  const { context = null, confirm = null, mode = null } = options
   const payload: Record<string, unknown> = {
     host,
     username,
@@ -108,6 +113,10 @@ export async function nqlQuery(
   if (confirm) {
     // Sent back exactly as received: the token is signed and bound to the program.
     payload.confirm = { program: confirm.program, token: confirm.token }
+  }
+
+  if (mode) {
+    payload.mode = mode
   }
 
   const res = await fetch(`${RELAY}/nql.php`, {
@@ -138,9 +147,10 @@ export function nqlConfirm(
   pending: NQLPending,
 ): Promise<NQLResult> {
   // prompt is required by api_run but unused for a confirmation (no Claude call).
-  return nqlQuery(host, username, password, idToken, base, 'confirm', null, {
-    program: pending.program,
-    token: pending.token,
+  // A call with confirm is always a LOBOC confirmation; mode is sent for consistency only.
+  return nqlQuery(host, username, password, idToken, base, 'confirm', {
+    confirm: { program: pending.program, token: pending.token },
+    mode: 'loboc',
   })
 }
 

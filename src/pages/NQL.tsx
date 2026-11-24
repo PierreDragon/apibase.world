@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { nqlQuery, nqlConfirm, type NQLContext, type NQLPending, type NQLProgram, type NQLResult } from '../api'
+import { nqlQuery, nqlConfirm, type NQLContext, type NQLMode, type NQLPending, type NQLProgram, type NQLResult } from '../api'
 import ResultRenderer from '../components/ResultRenderer'
 import { t } from '../i18n'
 
@@ -65,6 +65,19 @@ export default function NQL() {
 
   const contextKey = `apibase_nql_context:${host}:${base}:${idToken}:${user}`
   const savedKey   = `apibase_nql_saved:${host}:${base}:${user}`
+  const modeKey    = `apibase_nql_mode:${host}`
+
+  // 'auto' = no mode sent: the installation setting applies.
+  const [mode, setModeState] = useState<NQLMode | 'auto'>(() => {
+    const m = localStorage.getItem(modeKey)
+    return m === 'loboc' || m === 'tools' ? m : 'auto'
+  })
+
+  function setMode(m: NQLMode | 'auto') {
+    if (m === 'auto') localStorage.removeItem(modeKey)
+    else localStorage.setItem(modeKey, m)
+    setModeState(m)
+  }
 
   useEffect(() => {
     if (!host || !user || !pass || !idToken || !base) {
@@ -167,7 +180,8 @@ export default function NQL() {
   async function sendQuery() {
     const q = input.trim()
     if (!q || busy) return
-    const context = readContext()
+    // context only matters in tools mode.
+    const context = mode === 'loboc' ? null : readContext()
     setInput('')
     setBusy(true)
     setMessages(prev => [
@@ -176,17 +190,22 @@ export default function NQL() {
       { role: 'assistant', text: '', loading: true },
     ])
     try {
-      const res = await nqlQuery(host, user, pass, idToken, base, q, context)
-      // tools mode carries context; LOBOC mode (programs) never does.
-      if (!res.programs && 'context' in res) saveContext(res.context ?? null)
-      const pending = res.ok && res.pending ? res.pending : undefined
+      const res = await nqlQuery(host, user, pass, idToken, base, q, {
+        context,
+        mode: mode === 'auto' ? null : mode,
+      })
+      // The display follows the mode the answer reports. Fallback for an
+      // APIBASE that does not report it yet: LOBOC answers carry programs.
+      const loboc = res.mode ? res.mode === 'loboc' : !!res.programs
+      if (!loboc && 'context' in res) saveContext(res.context ?? null)
+      const pending = loboc && res.ok && res.pending ? res.pending : undefined
       setMessages(prev => {
         const updated = pending ? supersedePending(prev) : [...prev]
         updated[updated.length - 1] = {
           role: 'assistant',
           text: res.ok ? (res.answer ?? '') : (res.error ?? 'Erreur inattendue.'),
           loading: false,
-          programs: res.programs,
+          programs: loboc ? res.programs : undefined,
           pending,
           pendingState: pending ? 'active' : undefined,
         }
@@ -305,6 +324,30 @@ export default function NQL() {
             <span className="font-mono" style={{ color: '#94a3b8' }}>{user}</span>
             <span style={{ color: '#1e293b' }}>·</span>
             <span>token #{idToken}</span>
+          </div>
+
+          <div
+            className="flex items-center text-xs rounded-lg overflow-hidden"
+            style={{ border: '1px solid #1e1e2e' }}
+            title={t('mode_hint')}
+          >
+            <span className="px-2" style={{ color: '#475569' }}>{t('mode_label')}</span>
+            {(['auto', 'tools', 'loboc'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className="px-2 py-1.5"
+                style={{
+                  background: mode === m ? 'rgba(139,92,246,0.2)' : 'none',
+                  color: mode === m ? '#a78bfa' : '#475569',
+                  border: 'none',
+                  borderLeft: '1px solid #1e1e2e',
+                  cursor: 'pointer',
+                }}
+              >
+                {m === 'auto' ? t('mode_auto') : m === 'tools' ? 'tools' : 'LOBOC'}
+              </button>
+            ))}
           </div>
 
           {messages.length > 0 && (

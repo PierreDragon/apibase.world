@@ -49,6 +49,9 @@ const translations = {
     pending_done:       'Confirmed.',
     confirm_error:      'Nothing was saved. Ask your question again.',
     programs_label:     'LOBOC program',
+    mode_label:         'Mode',
+    mode_auto:          'auto',
+    mode_hint:          'auto: the APIBASE installation setting applies',
     // Display
     waiting:            'Waiting for an NQL query…',
     scan_hint:          'Scan to enter from your phone',
@@ -103,6 +106,9 @@ const translations = {
     pending_done:       'Confirmé.',
     confirm_error:      'Rien n\'a été enregistré. Reposez votre question.',
     programs_label:     'Programme LOBOC',
+    mode_label:         'Mode',
+    mode_auto:          'auto',
+    mode_hint:          'auto : le réglage de l\'installation APIBASE s\'applique',
     // Display
     waiting:            'En attente d\'une requête NQL…',
     scan_hint:          'Scanner pour saisir depuis le téléphone',
