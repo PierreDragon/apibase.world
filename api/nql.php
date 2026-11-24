@@ -45,6 +45,21 @@ if (!is_array($context)) {
     $context = null;
 }
 
+/*
+    LOBOC confirmation: { "program": "...", "token": "..." }.
+    Forwarded untouched: the token is signed and bound to this exact program.
+*/
+$confirm = $body['confirm'] ?? null;
+
+if (!is_array($confirm) || !is_string($confirm['program'] ?? null) || !is_string($confirm['token'] ?? null)) {
+    $confirm = null;
+} else {
+    $confirm = [
+        'program' => $confirm['program'],
+        'token' => $confirm['token'],
+    ];
+}
+
 if ($host === '' || $username === '' || $password === '' || $idToken <= 0 || $base === '' || $prompt === '') {
     http_response_code(400);
     echo json_encode([
@@ -63,6 +78,23 @@ if ($host === '' || $username === '' || $password === '' || $idToken <= 0 || $ba
 
     No scheme, no slash, no port, no path.
 */
+/*
+    Local development only: when the relay itself runs on localhost / *.local,
+    a *.local target may carry a port and is reached over plain http
+    (e.g. apibase.local:8082). In production the rules above are unchanged.
+*/
+$relayHost = strtolower((string) ($_SERVER['SERVER_NAME'] ?? ''));
+$isDevRelay = $relayHost === 'localhost' || $relayHost === '127.0.0.1' || str_ends_with($relayHost, '.local');
+
+$scheme = 'https';
+$port = '';
+
+if ($isDevRelay && preg_match('/^([a-zA-Z0-9.\-]+\.local)(?::(\d{1,5}))?$/', $host, $m)) {
+    $scheme = 'http';
+    $host = $m[1];
+    $port = isset($m[2]) ? ':' . $m[2] : '';
+}
+
 $host = preg_replace('/[^a-zA-Z0-9.\-]/', '', $host);
 $host = strtolower($host);
 
@@ -75,7 +107,7 @@ if ($host === '' || str_contains($host, '..') || !str_contains($host, '.')) {
     exit;
 }
 
-$url = 'https://' . $host . '/nql/api_run';
+$url = $scheme . '://' . $host . $port . '/nql/api_run';
 
 $payload = [
     'username' => $username,
@@ -87,6 +119,10 @@ $payload = [
 
 if ($context !== null) {
     $payload['context'] = $context;
+}
+
+if ($confirm !== null) {
+    $payload['confirm'] = $confirm;
 }
 
 $ch = curl_init($url);

@@ -23,12 +23,48 @@ export interface NQLToolCall {
   input: Record<string, unknown>
 }
 
+export interface NQLChange {
+  T: number
+  table: string
+  added: number
+  modified: number
+  removed: number
+}
+
+export interface NQLPending {
+  program: string
+  token: string
+  changes: NQLChange[]
+  expires: number
+}
+
+export interface NQLProgram {
+  program: string
+  status: 'success' | 'announce' | 'error'
+  code?: string
+  message?: string
+}
+
+export interface NQLConfirm {
+  program: string
+  token: string
+}
+
 export interface NQLResult {
   ok: boolean
   answer?: string
+  // tools mode
   tools?: NQLToolCall[]
   plan?: NQLToolCall[]
   context?: NQLContext
+  // LOBOC mode
+  programs?: NQLProgram[]
+  pending?: NQLPending | null
+  // LOBOC confirmation
+  status?: 'success' | 'announce' | 'error'
+  code?: string
+  message?: string
+  changes?: NQLChange[]
   error?: string
 }
 
@@ -54,6 +90,7 @@ export async function nqlQuery(
   base: string,
   prompt: string,
   context: NQLContext = null,
+  confirm: NQLConfirm | null = null,
 ): Promise<NQLResult> {
   const payload: Record<string, unknown> = {
     host,
@@ -68,13 +105,18 @@ export async function nqlQuery(
     payload.context = context
   }
 
+  if (confirm) {
+    // Sent back exactly as received: the token is signed and bound to the program.
+    payload.confirm = { program: confirm.program, token: confirm.token }
+  }
+
   const res = await fetch(`${RELAY}/nql.php`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   })
 
-  const data = await res.json()
+  const data: NQLResult = await res.json()
 
   if (data.tools && !data.plan) {
     data.plan = data.tools
@@ -85,6 +127,21 @@ export async function nqlQuery(
   }
 
   return data
+}
+
+export function nqlConfirm(
+  host: string,
+  username: string,
+  password: string,
+  idToken: number,
+  base: string,
+  pending: NQLPending,
+): Promise<NQLResult> {
+  // prompt is required by api_run but unused for a confirmation (no Claude call).
+  return nqlQuery(host, username, password, idToken, base, 'confirm', null, {
+    program: pending.program,
+    token: pending.token,
+  })
 }
 
 export async function pushToDisplay(sid: string, payload: unknown): Promise<void> {

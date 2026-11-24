@@ -1,13 +1,40 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { nqlQuery, type NQLContext } from '../api'
+import { nqlQuery, nqlConfirm, type NQLContext, type NQLPending, type NQLProgram, type NQLResult } from '../api'
 import ResultRenderer from '../components/ResultRenderer'
 import { t } from '../i18n'
+
+type PendingState = 'active' | 'confirming' | 'confirmed' | 'cancelled' | 'replaced' | 'expired' | 'failed'
 
 interface Message {
   role: 'user' | 'assistant'
   text: string
   loading?: boolean
+  programs?: NQLProgram[]
+  pending?: NQLPending
+  pendingState?: PendingState
+}
+
+// Only one announcement may await confirmation: a newer one replaces it.
+function supersedePending(list: Message[]): Message[] {
+  return list.map(m =>
+    m.pendingState === 'active' || m.pendingState === 'confirming'
+      ? { ...m, pendingState: 'replaced' as const }
+      : m,
+  )
+}
+
+function isExpired(p: NQLPending): boolean {
+  return !!p.expires && Date.now() / 1000 >= p.expires
+}
+
+function confirmationText(res: NQLResult): string {
+  if (!res.ok) return res.error ?? t('error_generic')
+  if (res.status === 'error') {
+    const head = [res.code, res.message].filter(Boolean).join(' — ')
+    return `${head ? `**${head}**\n\n` : ''}${t('confirm_error')}`
+  }
+  return res.message ?? ''
 }
 
 interface SavedQuery {
@@ -150,19 +177,79 @@ export default function NQL() {
     ])
     try {
       const res = await nqlQuery(host, user, pass, idToken, base, q, context)
-      if ('context' in res) saveContext(res.context ?? null)
+      // tools mode carries context; LOBOC mode (programs) never does.
+      if (!res.programs && 'context' in res) saveContext(res.context ?? null)
+      const pending = res.ok && res.pending ? res.pending : undefined
       setMessages(prev => {
-        const updated = [...prev]
+        const updated = pending ? supersedePending(prev) : [...prev]
         updated[updated.length - 1] = {
           role: 'assistant',
           text: res.ok ? (res.answer ?? '') : (res.error ?? 'Erreur inattendue.'),
           loading: false,
+          programs: res.programs,
+          pending,
+          pendingState: pending ? 'active' : undefined,
         }
         return updated
       })
     } catch {
       setMessages(prev => {
         const updated = [...prev]
+        updated[updated.length - 1] = { role: 'assistant', text: t('server_unreachable'), loading: false }
+        return updated
+      })
+    } finally {
+      setBusy(false)
+      inputRef.current?.focus()
+    }
+  }
+
+  function setPendingState(index: number, state: PendingState) {
+    setMessages(prev => prev.map((m, i) => (i === index ? { ...m, pendingState: state } : m)))
+  }
+
+  function cancelPending(index: number) {
+    // Nothing was saved: just forget the announcement client-side.
+    setPendingState(index, 'cancelled')
+    inputRef.current?.focus()
+  }
+
+  async function confirmPending(index: number) {
+    const msg = messages[index]
+    const pending = msg?.pending
+    if (!pending || msg.pendingState !== 'active' || busy) return
+    if (isExpired(pending)) {
+      setPendingState(index, 'expired')
+      return
+    }
+    setBusy(true)
+    setMessages(prev => [
+      ...prev.map((m, i) => (i === index ? { ...m, pendingState: 'confirming' as const } : m)),
+      { role: 'assistant', text: '', loading: true },
+    ])
+    try {
+      const res = await nqlConfirm(host, user, pass, idToken, base, pending)
+      const next: PendingState =
+        !res.ok ? 'active'
+        : res.status === 'success' ? 'confirmed'
+        : res.status === 'announce' ? 'replaced'
+        : 'failed'
+      const newPending = res.ok && res.status === 'announce' && res.pending ? res.pending : undefined
+      setMessages(prev => {
+        let updated = prev.map((m, i) => (i === index ? { ...m, pendingState: next } : m))
+        if (newPending) updated = supersedePending(updated)
+        updated[updated.length - 1] = {
+          role: 'assistant',
+          text: confirmationText(res),
+          loading: false,
+          pending: newPending,
+          pendingState: newPending ? 'active' : undefined,
+        }
+        return updated
+      })
+    } catch {
+      setMessages(prev => {
+        const updated = prev.map((m, i) => (i === index ? { ...m, pendingState: 'active' as const } : m))
         updated[updated.length - 1] = { role: 'assistant', text: t('server_unreachable'), loading: false }
         return updated
       })
@@ -293,7 +380,17 @@ export default function NQL() {
                   </div>
                 ) : (
                   <div className="px-4 py-3 rounded-2xl" style={{ background: '#12121a', border: '1px solid #1e1e2e' }}>
-                    <ResultRenderer text={msg.text} />
+                    {msg.text && <ResultRenderer text={msg.text} />}
+                    {msg.pending && msg.pendingState && (
+                      <PendingBlock
+                        pending={msg.pending}
+                        state={msg.pendingState}
+                        busy={busy}
+                        onConfirm={() => confirmPending(i)}
+                        onCancel={() => cancelPending(i)}
+                      />
+                    )}
+                    {msg.programs && msg.programs.length > 0 && <ProgramsBlock programs={msg.programs} />}
                   </div>
                 )}
               </div>
@@ -443,5 +540,101 @@ export default function NQL() {
         </p>
       </div>
     </div>
+  )
+}
+
+function PendingBlock({ pending, state, busy, onConfirm, onCancel }: {
+  pending: NQLPending
+  state: PendingState
+  busy: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  const live = state === 'active' || state === 'confirming'
+  const note: Partial<Record<PendingState, string>> = {
+    confirmed: t('pending_done'),
+    cancelled: t('pending_cancelled'),
+    replaced: t('pending_replaced'),
+    expired: t('pending_expired'),
+    failed: t('confirm_error'),
+  }
+  const th = 'px-3 py-1.5 font-medium'
+  const td = 'px-3 py-1.5 font-mono'
+
+  return (
+    <div
+      className="mt-3 rounded-xl overflow-hidden text-xs"
+      style={{ border: `1px solid ${live ? '#7c3aed' : '#1e1e2e'}`, opacity: live ? 1 : 0.6 }}
+    >
+      <div className="px-3 py-2 font-semibold" style={{ background: '#0d0d14', color: '#a78bfa' }}>
+        {t('pending_title')}
+      </div>
+      <table className="w-full" style={{ color: '#cbd5e1' }}>
+        <thead style={{ color: '#64748b' }}>
+          <tr>
+            <th className={`${th} text-left`}>{t('col_table')}</th>
+            <th className={`${th} text-right`}>{t('col_added')}</th>
+            <th className={`${th} text-right`}>{t('col_modified')}</th>
+            <th className={`${th} text-right`}>{t('col_removed')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {pending.changes.map(c => (
+            <tr key={c.T} style={{ borderTop: '1px solid #1a1a2e' }}>
+              <td className={td}>{c.table}</td>
+              <td className={`${td} text-right`} style={{ color: c.added ? '#4ade80' : undefined }}>{c.added}</td>
+              <td className={`${td} text-right`} style={{ color: c.modified ? '#fbbf24' : undefined }}>{c.modified}</td>
+              <td className={`${td} text-right`} style={{ color: c.removed ? '#f87171' : undefined }}>{c.removed}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="flex items-center gap-2 px-3 py-2" style={{ background: '#0d0d14', borderTop: '1px solid #1a1a2e' }}>
+        {live ? (
+          <>
+            <button
+              onClick={onConfirm}
+              disabled={busy}
+              className="px-3 py-1.5 rounded-lg font-semibold"
+              style={{
+                background: busy ? 'rgba(109,40,217,0.25)' : 'linear-gradient(135deg,#7c3aed,#6d28d9)',
+                color: '#fff', border: 'none', cursor: busy ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {state === 'confirming' ? t('confirming') : t('confirm')}
+            </button>
+            <button
+              onClick={onCancel}
+              disabled={busy}
+              className="px-3 py-1.5 rounded-lg"
+              style={{ background: 'none', color: '#94a3b8', border: '1px solid #2d2d3e', cursor: busy ? 'not-allowed' : 'pointer' }}
+            >
+              {t('cancel')}
+            </button>
+          </>
+        ) : (
+          <span style={{ color: '#64748b' }}>{note[state]}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ProgramsBlock({ programs }: { programs: NQLProgram[] }) {
+  const color: Record<string, string> = { success: '#4ade80', announce: '#a78bfa', error: '#f87171' }
+  return (
+    <details className="mt-3 text-xs" style={{ color: '#475569' }}>
+      <summary style={{ cursor: 'pointer' }}>{t('programs_label')} ({programs.length})</summary>
+      <div className="mt-2 space-y-2">
+        {programs.map((p, i) => (
+          <div key={i} className="rounded-lg px-3 py-2" style={{ background: '#0d0d14', border: '1px solid #1a1a2e' }}>
+            <div className="mb-1" style={{ color: color[p.status] ?? '#94a3b8' }}>
+              {p.status}{p.code ? ` · ${p.code}` : ''}{p.message ? ` — ${p.message}` : ''}
+            </div>
+            <pre className="whitespace-pre-wrap font-mono" style={{ color: '#94a3b8' }}>{p.program}</pre>
+          </div>
+        ))}
+      </div>
+    </details>
   )
 }
