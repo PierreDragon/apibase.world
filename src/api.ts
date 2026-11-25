@@ -26,6 +26,8 @@ export interface NQLToolCall {
 export interface NQLChange {
   T: number
   table: string
+  // Present only when the write targets another base than the current one.
+  base?: string
   added: number
   modified: number
   removed: number

@@ -223,6 +223,20 @@ export default function NQL() {
     }
   }
 
+  // Forget the active announcement once its token expires (10 minutes).
+  const activeIndex = messages.findIndex(m => m.pendingState === 'active')
+  const activeExpires = activeIndex >= 0 ? messages[activeIndex].pending?.expires ?? 0 : 0
+  useEffect(() => {
+    if (activeIndex < 0 || !activeExpires) return
+    const delay = Math.max(0, activeExpires * 1000 - Date.now())
+    const timer = setTimeout(() => {
+      setMessages(prev => prev.map((m, i) =>
+        i === activeIndex && m.pendingState === 'active' ? { ...m, pendingState: 'expired' } : m,
+      ))
+    }, delay)
+    return () => clearTimeout(timer)
+  }, [activeIndex, activeExpires])
+
   function setPendingState(index: number, state: PendingState) {
     setMessages(prev => prev.map((m, i) => (i === index ? { ...m, pendingState: state } : m)))
   }
@@ -623,8 +637,11 @@ function PendingBlock({ pending, state, busy, onConfirm, onCancel }: {
         </thead>
         <tbody>
           {pending.changes.map(c => (
-            <tr key={c.T} style={{ borderTop: '1px solid #1a1a2e' }}>
-              <td className={td}>{c.table}</td>
+            <tr key={`${c.base ?? ''}:${c.T}`} style={{ borderTop: '1px solid #1a1a2e' }}>
+              <td className={td}>
+                {c.base && <span style={{ color: '#a78bfa' }}>{c.base}.</span>}
+                {c.table}
+              </td>
               <td className={`${td} text-right`} style={{ color: c.added ? '#4ade80' : undefined }}>{c.added}</td>
               <td className={`${td} text-right`} style={{ color: c.modified ? '#fbbf24' : undefined }}>{c.modified}</td>
               <td className={`${td} text-right`} style={{ color: c.removed ? '#f87171' : undefined }}>{c.removed}</td>
