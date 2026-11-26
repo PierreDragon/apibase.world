@@ -50,6 +50,12 @@ export interface NQLProgram {
   by?: string
 }
 
+// A displayed exchange sent back so the AI understands follow-ups (APIBASE 5.6).
+export interface NQLHistoryEntry {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 // A memory example shown to the AI (APIBASE 5.6).
 export interface NQLMemory {
   question: string
@@ -116,9 +122,10 @@ export async function nqlQuery(
     confirm?: NQLConfirm | null
     mode?: NQLMode | null
     feedback?: { token: string; note: number } | null
+    history?: NQLHistoryEntry[] | null
   } = {},
 ): Promise<NQLResult> {
-  const { context = null, confirm = null, mode = null, feedback = null } = options
+  const { context = null, confirm = null, mode = null, feedback = null, history = null } = options
   const payload: Record<string, unknown> = {
     host,
     username,
@@ -143,6 +150,10 @@ export async function nqlQuery(
 
   if (feedback) {
     payload.feedback = { token: feedback.token, note: feedback.note }
+  }
+
+  if (history && history.length > 0) {
+    payload.history = history
   }
 
   const res = await fetch(`${RELAY}/nql.php`, {

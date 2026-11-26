@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   nqlQuery, nqlConfirm, nqlFeedback,
-  type NQLContext, type NQLMemory, type NQLMode, type NQLPending, type NQLProgram, type NQLResult,
+  type NQLContext, type NQLHistoryEntry, type NQLMemory, type NQLMode, type NQLPending, type NQLProgram, type NQLResult,
 } from '../api'
 import ResultRenderer from '../components/ResultRenderer'
 import { t } from '../i18n'
@@ -13,6 +13,8 @@ interface Message {
   role: 'user' | 'assistant'
   text: string
   loading?: boolean
+  // Error shown to the person: not sent back as history.
+  error?: boolean
   programs?: NQLProgram[]
   pending?: NQLPending
   pendingState?: PendingState
@@ -34,6 +36,18 @@ function supersedePending(list: Message[]): Message[] {
 
 function isExpired(p: NQLPending): boolean {
   return !!p.expires && Date.now() / 1000 >= p.expires
+}
+
+// history for api_run: last 8 displayed messages, oldest first, 4000 chars max each.
+// Errors and empty messages (a pending table without text) are left out.
+const HISTORY_MAX = 8
+const HISTORY_CHARS = 4000
+
+function buildHistory(list: Message[]): NQLHistoryEntry[] {
+  return list
+    .filter(m => !m.loading && !m.error && m.text.trim() !== '')
+    .slice(-HISTORY_MAX)
+    .map(m => ({ role: m.role, content: m.text.trim().slice(0, HISTORY_CHARS) }))
 }
 
 function confirmationText(res: NQLResult): string {
@@ -190,6 +204,8 @@ export default function NQL() {
     if (!q || busy) return
     // context only matters in tools mode.
     const context = mode === 'loboc' ? null : readContext()
+    // Displayed exchanges, before this question, so the AI understands follow-ups.
+    const history = buildHistory(messages)
     setInput('')
     setBusy(true)
     setMessages(prev => [
@@ -201,6 +217,7 @@ export default function NQL() {
       const res = await nqlQuery(host, user, pass, idToken, base, q, {
         context,
         mode: mode === 'auto' ? null : mode,
+        history,
       })
       // The display follows the mode the answer reports. Fallback for an
       // APIBASE that does not report it yet: LOBOC answers carry programs.
@@ -212,6 +229,7 @@ export default function NQL() {
         updated[updated.length - 1] = {
           role: 'assistant',
           text: res.ok ? (res.answer ?? '') : (res.error ?? 'Erreur inattendue.'),
+          error: !res.ok,
           loading: false,
           programs: loboc ? res.programs : undefined,
           memory: loboc ? res.memory : undefined,
@@ -224,7 +242,7 @@ export default function NQL() {
     } catch {
       setMessages(prev => {
         const updated = [...prev]
-        updated[updated.length - 1] = { role: 'assistant', text: t('server_unreachable'), loading: false }
+        updated[updated.length - 1] = { role: 'assistant', text: t('server_unreachable'), loading: false, error: true }
         return updated
       })
     } finally {
@@ -303,6 +321,7 @@ export default function NQL() {
         updated[updated.length - 1] = {
           role: 'assistant',
           text: confirmationText(res),
+          error: !res.ok,
           loading: false,
           pending: newPending,
           pendingState: newPending ? 'active' : undefined,
@@ -312,7 +331,7 @@ export default function NQL() {
     } catch {
       setMessages(prev => {
         const updated = prev.map((m, i) => (i === index ? { ...m, pendingState: 'active' as const } : m))
-        updated[updated.length - 1] = { role: 'assistant', text: t('server_unreachable'), loading: false }
+        updated[updated.length - 1] = { role: 'assistant', text: t('server_unreachable'), loading: false, error: true }
         return updated
       })
     } finally {

@@ -126,6 +126,34 @@ if ($confirm !== null) {
 }
 
 /*
+    Conversation history (APIBASE 5.6): [{ "role": "user"|"assistant", "content": "..." }],
+    oldest first, without the current question. Malformed entries are dropped so that
+    api_run never answers INVALID_HISTORY; the last 8, each cut to 4000 characters.
+*/
+$history = $body['history'] ?? null;
+
+if (is_array($history) && array_is_list($history)) {
+    $clean = [];
+    foreach ($history as $h) {
+        if (!is_array($h) || !in_array($h['role'] ?? null, ['user', 'assistant'], true) || !is_string($h['content'] ?? null)) {
+            continue;
+        }
+        $content = trim($h['content']);
+        if ($content === '') {
+            continue;
+        }
+        $clean[] = [
+            'role' => $h['role'],
+            'content' => mb_substr($content, 0, 4000),
+        ];
+    }
+    $clean = array_slice($clean, -8);
+    if ($clean) {
+        $payload['history'] = $clean;
+    }
+}
+
+/*
     Memory rating (APIBASE 5.6): { "token": "...", "note": 1..5 }.
     Token forwarded untouched; an invalid note is left to api_run (400 INVALID_NOTE).
 */
