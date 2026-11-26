@@ -49,6 +49,10 @@ const translations = {
     pending_done:       'Confirmed.',
     confirm_error:      'Nothing was saved. Ask your question again.',
     programs_label:     'LOBOC programs',
+    // New version banner
+    update_available:   'A new version of apibase.world is online. Reloading clears the conversation shown.',
+    update_reload:      'Reload',
+    update_later:       'Later',
     // NQL memory (APIBASE 5.6)
     rate_label:         'Rate this answer',
     rate_done:          'Noted — it will help with similar questions.',
@@ -119,6 +123,10 @@ const translations = {
     pending_done:       'Confirmé.',
     confirm_error:      'Rien n\'a été enregistré. Reposez votre question.',
     programs_label:     'Programmes LOBOC',
+    // Bandeau nouvelle version
+    update_available:   'Une nouvelle version d\'apibase.world est en ligne. Recharger efface la conversation affichée.',
+    update_reload:      'Recharger',
+    update_later:       'Plus tard',
     // Mémoire NQL (APIBASE 5.6)
     rate_label:         'Noter cette réponse',
     rate_done:          'Noté — ça aidera pour les questions semblables.',

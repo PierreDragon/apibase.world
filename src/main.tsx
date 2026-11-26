@@ -6,10 +6,12 @@ import Login from './pages/Login'
 import NQL from './pages/NQL'
 import Display from './pages/Display'
 import Input from './pages/Input'
+import UpdateBanner from './components/UpdateBanner'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
+      <UpdateBanner />
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />

@@ -5,6 +5,7 @@ import {
   type NQLContext, type NQLHistoryEntry, type NQLMemory, type NQLMode, type NQLPending, type NQLProgram, type NQLResult,
 } from '../api'
 import ResultRenderer from '../components/ResultRenderer'
+import { checkForNewVersion } from '../version'
 import { t } from '../i18n'
 
 type PendingState = 'active' | 'confirming' | 'confirmed' | 'cancelled' | 'replaced' | 'expired' | 'failed'
@@ -206,6 +207,7 @@ export default function NQL() {
     const context = mode === 'loboc' ? null : readContext()
     // Displayed exchanges, before this question, so the AI understands follow-ups.
     const history = buildHistory(messages)
+    checkForNewVersion()
     setInput('')
     setBusy(true)
     setMessages(prev => [
