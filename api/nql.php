@@ -126,6 +126,19 @@ if ($confirm !== null) {
 }
 
 /*
+    Memory rating (APIBASE 5.6): { "token": "...", "note": 1..5 }.
+    Token forwarded untouched; an invalid note is left to api_run (400 INVALID_NOTE).
+*/
+$feedback = $body['feedback'] ?? null;
+
+if (is_array($feedback) && is_string($feedback['token'] ?? null) && is_int($feedback['note'] ?? null)) {
+    $payload['feedback'] = [
+        'token' => $feedback['token'],
+        'note' => $feedback['note'],
+    ];
+}
+
+/*
     NQL mode per call: "loboc" or "tools". Forwarded only when the UI asks;
     without it, the installation setting (configs.nqlmode) applies.
     An unknown value is left to api_run, which answers 400 INVALID_MODE.

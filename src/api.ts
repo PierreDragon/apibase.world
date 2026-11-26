@@ -42,9 +42,20 @@ export interface NQLPending {
 
 export interface NQLProgram {
   program: string
-  status: 'success' | 'announce' | 'error'
+  // 'advice': a program suggested by the memory advisor (by = its display name).
+  status: 'success' | 'announce' | 'error' | 'advice'
+  executed?: number
   code?: string
   message?: string
+  by?: string
+}
+
+// A memory example shown to the AI (APIBASE 5.6).
+export interface NQLMemory {
+  question: string
+  note: number
+  same: boolean
+  by?: string
 }
 
 export interface NQLConfirm {
@@ -67,8 +78,12 @@ export interface NQLResult {
   // LOBOC mode
   programs?: NQLProgram[]
   pending?: NQLPending | null
-  // LOBOC confirmation
-  status?: 'success' | 'announce' | 'error'
+  // NQL memory: rating token (24 h) and examples shown to the AI
+  feedback?: string | null
+  memory?: NQLMemory[]
+  // LOBOC confirmation; 'noted' answers a rating
+  status?: 'success' | 'announce' | 'error' | 'noted'
+  note?: number
   code?: string
   message?: string
   changes?: NQLChange[]
@@ -96,9 +111,14 @@ export async function nqlQuery(
   idToken: number,
   base: string,
   prompt: string,
-  options: { context?: NQLContext; confirm?: NQLConfirm | null; mode?: NQLMode | null } = {},
+  options: {
+    context?: NQLContext
+    confirm?: NQLConfirm | null
+    mode?: NQLMode | null
+    feedback?: { token: string; note: number } | null
+  } = {},
 ): Promise<NQLResult> {
-  const { context = null, confirm = null, mode = null } = options
+  const { context = null, confirm = null, mode = null, feedback = null } = options
   const payload: Record<string, unknown> = {
     host,
     username,
@@ -119,6 +139,10 @@ export async function nqlQuery(
 
   if (mode) {
     payload.mode = mode
+  }
+
+  if (feedback) {
+    payload.feedback = { token: feedback.token, note: feedback.note }
   }
 
   const res = await fetch(`${RELAY}/nql.php`, {
@@ -172,4 +196,16 @@ export async function pollDisplay(sid: string): Promise<unknown> {
   }
 
   return res.json()
+}
+export function nqlFeedback(
+  host: string,
+  username: string,
+  password: string,
+  idToken: number,
+  base: string,
+  token: string,
+  note: number,
+): Promise<NQLResult> {
+  // Rates an answer for NQL memory: no Claude call, no credit. prompt is required but unused.
+  return nqlQuery(host, username, password, idToken, base, 'note', { feedback: { token, note } })
 }

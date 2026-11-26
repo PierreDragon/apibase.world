@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { nqlQuery, nqlConfirm, type NQLContext, type NQLMode, type NQLPending, type NQLProgram, type NQLResult } from '../api'
+import {
+  nqlQuery, nqlConfirm, nqlFeedback,
+  type NQLContext, type NQLMemory, type NQLMode, type NQLPending, type NQLProgram, type NQLResult,
+} from '../api'
 import ResultRenderer from '../components/ResultRenderer'
 import { t } from '../i18n'
 
@@ -13,6 +16,11 @@ interface Message {
   programs?: NQLProgram[]
   pending?: NQLPending
   pendingState?: PendingState
+  memory?: NQLMemory[]
+  // NQL memory rating token (valid 24 h)
+  feedback?: string
+  note?: number
+  noteState?: 'sending' | 'error'
 }
 
 // Only one announcement may await confirmation: a newer one replaces it.
@@ -206,6 +214,8 @@ export default function NQL() {
           text: res.ok ? (res.answer ?? '') : (res.error ?? 'Erreur inattendue.'),
           loading: false,
           programs: loboc ? res.programs : undefined,
+          memory: loboc ? res.memory : undefined,
+          feedback: loboc && res.ok && res.feedback ? res.feedback : undefined,
           pending,
           pendingState: pending ? 'active' : undefined,
         }
@@ -239,6 +249,25 @@ export default function NQL() {
 
   function setPendingState(index: number, state: PendingState) {
     setMessages(prev => prev.map((m, i) => (i === index ? { ...m, pendingState: state } : m)))
+  }
+
+  async function rateAnswer(index: number, note: number) {
+    const msg = messages[index]
+    // The token lasts 24 h; past that, api_run answers INVALID_FEEDBACK, shown as an error.
+    if (!msg?.feedback || msg.noteState === 'sending') return
+    const previous = msg.note
+    setMessages(prev => prev.map((m, i) => (i === index ? { ...m, note, noteState: 'sending' } : m)))
+    let ok = false
+    try {
+      const res = await nqlFeedback(host, user, pass, idToken, base, msg.feedback, note)
+      ok = res.ok && res.status === 'noted'
+    } catch {
+      ok = false
+    }
+    // Re-rating is allowed: the last note counts. On failure, keep the previous note.
+    setMessages(prev => prev.map((m, i) =>
+      i === index ? { ...m, note: ok ? note : previous, noteState: ok ? undefined : 'error' } : m,
+    ))
   }
 
   function cancelPending(index: number) {
@@ -447,7 +476,16 @@ export default function NQL() {
                         onCancel={() => cancelPending(i)}
                       />
                     )}
-                    {msg.programs && msg.programs.length > 0 && <ProgramsBlock programs={msg.programs} />}
+                    {msg.feedback && (
+                      <RatingBar
+                        note={msg.note}
+                        state={msg.noteState}
+                        onRate={n => rateAnswer(i, n)}
+                      />
+                    )}
+                    {((msg.programs?.length ?? 0) > 0 || (msg.memory?.length ?? 0) > 0) && (
+                      <ProgramsBlock programs={msg.programs ?? []} memory={msg.memory ?? []} />
+                    )}
                   </div>
                 )}
               </div>
@@ -680,16 +718,72 @@ function PendingBlock({ pending, state, busy, onConfirm, onCancel }: {
   )
 }
 
-function ProgramsBlock({ programs }: { programs: NQLProgram[] }) {
-  const color: Record<string, string> = { success: '#4ade80', announce: '#a78bfa', error: '#f87171' }
+const NOTE_HINT: Record<number, 'note_good' | 'note_ok' | 'note_bad'> = {
+  5: 'note_good', 4: 'note_good', 3: 'note_ok', 2: 'note_bad', 1: 'note_bad',
+}
+
+function RatingBar({ note, state, onRate }: {
+  note?: number
+  state?: 'sending' | 'error'
+  onRate: (n: number) => void
+}) {
+  return (
+    <div className="mt-3 flex items-center gap-1 text-xs" style={{ color: '#475569' }}>
+      <span className="mr-1">{t('rate_label')}</span>
+      {[1, 2, 3, 4, 5].map(n => {
+        const on = note === n
+        return (
+          <button
+            key={n}
+            onClick={() => onRate(n)}
+            disabled={state === 'sending'}
+            title={`${n} — ${t(NOTE_HINT[n])}`}
+            className="w-6 h-6 rounded-md font-mono"
+            style={{
+              background: on ? 'rgba(139,92,246,0.25)' : 'none',
+              color: on ? '#a78bfa' : '#64748b',
+              border: `1px solid ${on ? '#7c3aed' : '#1e1e2e'}`,
+              cursor: state === 'sending' ? 'wait' : 'pointer',
+            }}
+          >
+            {n}
+          </button>
+        )
+      })}
+      <span className="ml-2">
+        {state === 'sending' ? '…'
+          : state === 'error' ? <span style={{ color: '#f87171' }}>{t('rate_error')}</span>
+          : note ? `✓ ${t('rate_done')}` : ''}
+      </span>
+    </div>
+  )
+}
+
+function ProgramsBlock({ programs, memory }: { programs: NQLProgram[]; memory: NQLMemory[] }) {
+  const color: Record<string, string> = { success: '#4ade80', announce: '#a78bfa', error: '#f87171', advice: '#38bdf8' }
   return (
     <details className="mt-3 text-xs" style={{ color: '#475569' }}>
-      <summary style={{ cursor: 'pointer' }}>{t('programs_label')} ({programs.length})</summary>
+      <summary style={{ cursor: 'pointer' }}>
+        {t('programs_label')} ({programs.length}){memory.length > 0 ? ` · ${t('memory_label')} (${memory.length})` : ''}
+      </summary>
       <div className="mt-2 space-y-2">
+        {memory.length > 0 && (
+          <div className="rounded-lg px-3 py-2" style={{ background: '#0d0d14', border: '1px solid #1a1a2e' }}>
+            <div className="mb-1" style={{ color: '#38bdf8' }}>{t('memory_title')}</div>
+            {memory.map((m, i) => (
+              <div key={i} style={{ color: '#94a3b8' }}>
+                « {m.question} » · {t('memory_note')} {m.note}
+                {' · '}{m.same ? t('memory_same') : t('memory_similar')}
+                {m.by ? ` · ${m.by}` : ''}
+              </div>
+            ))}
+          </div>
+        )}
         {programs.map((p, i) => (
           <div key={i} className="rounded-lg px-3 py-2" style={{ background: '#0d0d14', border: '1px solid #1a1a2e' }}>
             <div className="mb-1" style={{ color: color[p.status] ?? '#94a3b8' }}>
-              {p.status}{p.code ? ` · ${p.code}` : ''}{p.message ? ` — ${p.message}` : ''}
+              {p.status === 'advice' ? (p.by ?? t('advisor_default')) : p.status}
+              {p.code ? ` · ${p.code}` : ''}{p.message ? ` — ${p.message}` : ''}
             </div>
             <pre className="whitespace-pre-wrap font-mono" style={{ color: '#94a3b8' }}>{p.program}</pre>
           </div>
